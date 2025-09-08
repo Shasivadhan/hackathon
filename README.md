@@ -3,7 +3,7 @@
 **Endpoints**
 - `POST /api/products` → create product (id, price, carbonPerUnit)
 - `POST /api/cart/items` → add to cart (header **X-User-Id**)
-- `POST /api/cart/apply-code` → apply discount coode
+- `POST /api/cart/apply-code` → apply discount sdscoode
 - `POST /api/orders/preview` → subtotal, discsount, total, **totalCarbon**
 - `GET /api/cart` → view cart
 
