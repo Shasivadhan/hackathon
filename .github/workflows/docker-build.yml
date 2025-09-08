@@ -1,5 +1,4 @@
 name: CI/CD - Build & Push Docker Image
-
 on:
   push:
     branches:
@@ -9,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       # Step 1: Checkout code
       - name: Checkout repository
