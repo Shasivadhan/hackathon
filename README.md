@@ -1,4 +1,4 @@
-# UC-02 (Simple) — Few APIs
+# UC-02 (Simple) — Few API
 
 **Endpoints**
 - `POST /api/products` → create product (id, price, carbonPerUnit)
