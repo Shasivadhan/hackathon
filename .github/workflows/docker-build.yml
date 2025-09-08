@@ -1,51 +1,70 @@
 name: CI/CD - Build & Push Docker Image
+
 on:
   push:
-    branches:
-      - main   # Run only on pushes to main
+    branches: [ "main" ]      # pushes to main -> build & push to Docker Hub
   pull_request:
+    branches: [ "main" ]      # PRs -> build only (no secrets, no push)
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout code
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # Step 2: Set up JDK 21
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
-      # Step 3: Cache Maven dependencies
-      - name: Cache Maven packages
+      - name: Cache Maven
         uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          restore-keys: ${{ runner.os }}-maven-
 
-      # Step 4: Build JAR file
-      - name: Build with Maven
+      - name: Build JAR
         run: mvn -B clean package -DskipTests
 
-      # Step 5: Log in to Docker Hub
-      - name: Log in to DockerHub
+      # For PRs: do a local docker build only (no push, no secrets)
+      - name: Docker build (PR only)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: local/test:pr
+
+  publish:
+    needs: build
+    if: github.event_name == 'push'   # only on push to main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Docker Hub secrets
+        id: verify
+        run: |
+          if [ -z "${{ secrets.DOCKER_HUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKER_HUB_TOKEN }}" ]; then
+            echo "Missing DOCKER_HUB_USERNAME or DOCKER_HUB_TOKEN"; exit 1;
+          fi
+          echo "image=${{ secrets.DOCKER_HUB_USERNAME }}/cart-order-service" >> $GITHUB_OUTPUT
+
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      # Step 6: Build & Push Docker image
-      - name: Build and Push Docker image
+      - name: Build & Push image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/cart-order-service:latest
-            ${{ secrets.DOCKER_HUB_USERNAME }}/cart-order-service:${{ github.sha }}
+            ${{ steps.verify.outputs.image }}:latest
+            ${{ steps.verify.outputs.image }}:${{ github.sha }}
